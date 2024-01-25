@@ -2,6 +2,7 @@ Cat-A-Log
 ---
 
 PlayStation® Vita™ network logging plugin
+![settings](2024-01-25-201724.jpg)
 
 ## Installation:
 
