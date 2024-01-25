@@ -1,0 +1,13 @@
+CatLog:
+  attributes: 0
+  version:
+    major: 1
+    minor: 0
+  main:
+    start: module_start
+  libraries:
+    CatLog:
+      syscall: true
+      functions:
+        - CatLogReadConfig
+        - CatLogUpdateConfig
