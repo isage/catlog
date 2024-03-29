@@ -309,6 +309,8 @@ int CatLogInit(void)
 {
   int ret;
 
+  ksceIoMkdir("ur0:/data", 0777);
+
   if (CheckConfig() < 0)
   {
     CreateConfig();
