@@ -49,10 +49,15 @@ int module_get_export_func(SceUID pid, const char *modname, uint32_t libnid, uin
   name##HookUid = taiHookFunctionExportForKernel(KERNEL_PID, &name##HookRef, (module), (lib_nid), (func_nid),     \
                                                  (const void *)name##HookFunc)
 
+#define BIND_FUNC_OFFSET_HOOK(name, modid, segidx, offset, thumb)    \
+    name##HookUid = taiHookFunctionOffsetForKernel(KERNEL_PID, &name##HookRef, \
+        (modid), (segidx), (offset), thumb, (const void*)name##HookFunc)
 
 #define GetExport(modname, lib_nid, func_nid, func)                                                               \
   module_get_export_func(KERNEL_PID, modname, lib_nid, func_nid, (uintptr_t *)func)
 
+
+CatLogConfig_t Config;
 
 static int net_thread_run    = 0;
 static SceUID net_thread_uid = 0;
@@ -93,6 +98,13 @@ DECL_FUNC_HOOK(sceSblQafMgrIsAllowKernelDebugForDriver_patched)
 DECL_FUNC_HOOK(sceSblQafMgrIsAllowSystemAppDebugForDriver_patched)
 {
   return 1;
+}
+
+DECL_FUNC_HOOK(ScePower_3e10_patched, int pid, int flags, unsigned int set)
+{
+  if (flags == 3 && Config.net) // WLAN/COM
+    set = 1;
+  return TAI_CONTINUE(int, ScePower_3e10_patchedHookRef, pid, flags, set);
 }
 
 /* flags for sceNetShutdown */
@@ -180,7 +192,6 @@ static int net_thread(SceSize args, void *argp)
   return 0;
 }
 
-CatLogConfig_t Config;
 
 int SaveConfig(void)
 {
@@ -198,6 +209,7 @@ int CreateConfig(void)
   Config.host = 0x0100007f; // 127.0.0.1
   Config.port = DEFAULT_PORT;
   Config.loglevel = 2;
+  Config.net = 0;
 
   SceUID fd = ksceIoOpen(CFG_PATH, SCE_O_WRONLY | SCE_O_CREAT | SCE_O_TRUNC, 0666);
   if (fd < 0) return fd;
@@ -210,8 +222,25 @@ int CreateConfig(void)
 
 int CheckConfig(void)
 {
-  SceIoStat buf;
-  return ksceIoGetstat(CFG_PATH, &buf);
+  SceUID fd = ksceIoOpen(CFG_PATH, SCE_O_RDONLY, 0);
+  if (fd < 0)
+  {
+    return fd;
+  }
+
+  CatLogConfig_t tmp;
+
+  int res = ksceIoRead(fd, &tmp, sizeof(CatLogConfig_t));
+
+  if (res != sizeof(CatLogConfig_t))
+  {
+    ksceIoClose(fd);
+    return -1;
+  }
+
+  ksceIoClose(fd);
+
+  return 0;
 }
 
 int LoadConfig(void)
@@ -252,7 +281,7 @@ end:
 }
 
 
-int CatLogUpdateConfig(uint32_t host, uint16_t port, uint16_t level)
+int CatLogUpdateConfig(uint32_t host, uint16_t port, uint16_t level, uint8_t net)
 {
   uint32_t state;
 
@@ -261,6 +290,7 @@ int CatLogUpdateConfig(uint32_t host, uint16_t port, uint16_t level)
   Config.host = host;
   Config.port = port;
   Config.loglevel = level;
+  Config.net = net;
   sceKernelSetAssertLevelForKernel(Config.loglevel);
 
   server.sin_addr.s_addr = host;
@@ -273,7 +303,7 @@ int CatLogUpdateConfig(uint32_t host, uint16_t port, uint16_t level)
   return 0;
 }
 
-int CatLogReadConfig(uint32_t* host, uint16_t* port, uint16_t* level)
+int CatLogReadConfig(uint32_t* host, uint16_t* port, uint16_t* level, uint8_t* net)
 {
   int res;
   uint32_t state;
@@ -293,6 +323,12 @@ int CatLogReadConfig(uint32_t* host, uint16_t* port, uint16_t* level)
   }
 
   res = ksceKernelMemcpyKernelToUser((void *)level, &Config.loglevel, 2);
+  if (res < 0)
+  {
+    goto end;
+  }
+
+  res = ksceKernelMemcpyKernelToUser((void *)net, &Config.net, 1);
   if (res < 0)
   {
     goto end;
@@ -328,6 +364,15 @@ int CatLogInit(void)
     goto end;
   }
 
+  tai_module_info_t modInfo;
+  modInfo.size = sizeof(tai_module_info_t);
+
+  if (taiGetModuleInfoForKernel(KERNEL_PID, "ScePower", &modInfo) < 0)
+  {
+    ret = -1;
+    goto end;
+  }
+
   if (GetExport("SceSysmem", 0x88C17370, 0xCE9060F1, &sceKernelSetAssertLevelForKernel) < 0)
     if (GetExport("SceSysmem", 0x13D793B7, 0xC5889385, &sceKernelSetAssertLevelForKernel) < 0)
     {
@@ -358,6 +403,8 @@ int CatLogInit(void)
 
   BIND_FUNC_EXPORT_HOOK(sceSblQafMgrIsAllowKernelDebugForDriver_patched, "SceSysmem", 0xFFFFFFFF, 0x382C71E8);
   BIND_FUNC_EXPORT_HOOK(sceSblQafMgrIsAllowSystemAppDebugForDriver_patched, "SceSysmem", 0xFFFFFFFF, 0xCAD47130);
+
+  BIND_FUNC_OFFSET_HOOK(ScePower_3e10_patched, modInfo.modid, 0, 0x3E10, 1);
 
   ret = sceDebugDisableInfoDumpForKernel(0);
   if (ret < 0)

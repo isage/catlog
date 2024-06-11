@@ -68,6 +68,12 @@
             <list_item id="id_catlog_level_debug" title="Debug" value="1"/>
             <list_item id="id_catlog_level_trace" title="Trace" value="2"/>
         </list>
+
+        <toggle_switch id="enable_net"
+                   key="/CONFIG/CATLOG/net"
+                   title="Keep Wi-Fi ON"
+                   description="Always keep wifi on" />
+
       </setting_list>
 
   </setting_list>

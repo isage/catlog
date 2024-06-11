@@ -63,6 +63,11 @@ DECL_FUNC_HOOK(sceRegMgrGetKeyInt, const char *category, const char *name, int *
       {
         *value = cfg.port;
       }
+
+      if (sceClibStrncmp(name, "net", 3) == 0)
+      {
+        *value = cfg.net;
+      }
     }
     return 0;
   }
@@ -100,7 +105,12 @@ DECL_FUNC_HOOK(sceRegMgrSetKeyInt, const char *category, const char *name, int v
       cfg.port = value;
     }
 
-    CatLogUpdateConfig(cfg.host, cfg.port, cfg.loglevel);
+    if (sceClibStrncmp(name, "net", 3) == 0)
+    {
+      cfg.net = value;
+    }
+
+    CatLogUpdateConfig(cfg.host, cfg.port, cfg.loglevel, cfg.net);
 
     return 0;
   }
@@ -116,7 +126,7 @@ DECL_FUNC_HOOK(sceRegMgrSetKeyStr, const char *category, const char *name, char 
       sceNetInetPton(SCE_NET_AF_INET, value, &cfg.host);
     }
 
-    CatLogUpdateConfig(cfg.host, cfg.port, cfg.loglevel);
+    CatLogUpdateConfig(cfg.host, cfg.port, cfg.loglevel, cfg.net);
     return 0;
   }
   return TAI_CONTINUE(int, sceRegMgrSetKeyStrHookRef, category, name, value, len);
@@ -199,7 +209,7 @@ int module_start(SceSize argc, const void *args)
       return SCE_KERNEL_START_SUCCESS;
   }
 
-  CatLogReadConfig(&cfg.host, &cfg.port, &cfg.loglevel);
+  CatLogReadConfig(&cfg.host, &cfg.port, &cfg.loglevel, &cfg.net);
 
   BIND_FUNC_IMPORT_HOOK(sceKernelLoadStartModule, "SceSettings", 0xCAE9ACE6, 0x2DCC4AFA);
   BIND_FUNC_IMPORT_HOOK(sceKernelStopUnloadModule, "SceSettings", 0xCAE9ACE6, 0x2415F8A4);

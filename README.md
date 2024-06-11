@@ -20,4 +20,5 @@ PlayStation® Vita™ network logging plugin
 ## Credits
 * [Princess-of-Sleeping](https://github.com/Princess-of-Sleeping), [cuevavirus](https://git.shotatoshounenwachigau.moe/) - PrincessLog
 * [SKGleba](https://github.com/SKGleba) - settings menu idea and injection code
+* [Electry](https://github.com/Electry) - wifi patch
 * CBPS
