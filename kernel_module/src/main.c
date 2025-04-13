@@ -30,7 +30,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #include <psp2kern/kernel/sysmem.h>
 #include <psp2kern/kernel/threadmgr.h>
 #include <psp2kern/kernel/utils.h>
-#include <psp2kern/net/net.h>
+#include <psp2kern/netps.h>
 #include <stdarg.h>
 #include <taihen.h>
 
